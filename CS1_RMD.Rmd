@@ -1,0 +1,100 @@
+---
+title: "Cyclistic Case Study"
+author: "Will Davis"
+date: "2023-04-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+
+#load all 12 months
+jan <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202201-divvy-tripdata.csv")
+feb <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202202-divvy-tripdata.csv")
+mar <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202203-divvy-tripdata.csv")
+apr <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202204-divvy-tripdata.csv")
+may <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202205-divvy-tripdata.csv")
+jun <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202206-divvy-tripdata.csv")
+jul <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202207-divvy-tripdata.csv") 
+aug <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202208-divvy-tripdata.csv")
+sep <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202209-divvy-publictripdata.csv")
+oct <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202210-divvy-tripdata.csv")
+nov <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202211-divvy-tripdata.csv")
+dec <- read.csv("C:\\Users\\willd\\OneDrive\\Desktop\\DataAnalysis\\google DA\\CS_1\\12Month\\202212-divvy-tripdata.csv")
+# create a data frame from all 12
+full_df <- rbind(jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec)
+#remove duplicates
+full_df <- unique(full_df)
+#df of the columns I want to analyze
+reduced_df <- data.frame(full_df$rideable_type, full_df$started_at, full_df$ended_at, full_df$member_casual)
+#dropping null values from my df starts 5667717
+reduced_df <- drop_na(reduced_df)
+#Adding ride time column
+colnames(reduced_df) <- c('type', 'start', 'end', 'status')
+work_df <- reduced_df %>%
+  mutate(ride_time = case_when(as_datetime(end) > as_datetime(start) ~ (as_datetime(end) - as_datetime(start)),
+  as_datetime(end) < as_datetime(start) ~ (as_datetime(start) - as_datetime(end))))
+summary(work_df)
+```
+
+## Cyclistic Case Study Data
+
+This case study is for a fictional company called Cyclistic, the data was provided by google as part of the Data Analytics certificate.
+
+The primary goal of the case study is to recommend ways to increase annually memberships of a bike share company based on insights provided by one years worth of user data.
+
+The data provided was compiled into a single data frame which was reduced to only included info on vehicle type, time of year, membership status and a generated column of ride duration.
+
+The information provided had some incongruity with start and end times which need to be resolved as well as conflicting data types. Ultimately the data was very useful.
+
+```{r}
+#get some stats on member types
+member_df <- subset(work_df, status == 'member')
+casual_df <- subset(work_df, status == 'casual')
+#average ride time for each 
+avg_mem_ride <- mean(member_df$ride_time, na.rm=TRUE)/60
+print(avg_mem_ride)
+avg_cas_ride <- mean(casual_df$ride_time, na.rm=TRUE)/60
+print(avg_cas_ride)
+#most common vehicle type
+#mode
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+v <- member_df$type
+mode_mem <- getmode(v)
+print(mode_mem)
+
+v <- casual_df$type
+mode_cas <- getmode(v)
+print(mode_cas)
+
+```
+
+## Insights about users
+
+To make suggestions about how to increase membership it was necessary to find how users differ. Some stand out information was the average duration of rides and most common vehicle choice. Annual members generally took shorter rides of about 12 minutes on traditional pedal bikes, where non members averaged 30 minute rides on electric bikes. Members make up the majority of users year round with an increase of nonmember volume in summer months.
+
+```{r Viz}
+# count by memebr status and month
+df1 <- work_df %>% 
+  count(format(as.POSIXct(start),"%m"), status)
+colnames(df1) <- c('month', 'status', 'count')
+
+#visualization of most popular month 
+ggplot(df1, aes(x=month, y= count, fill=status)) + 
+  geom_bar(stat = "identity")
+```
+
+# Recommendations
+
+Based on the analysis performed my top three recommendations to increase annual membership are as follows.
+
+*Provide a discount to members who use E-bikes*
+
+Provide promos for signups during the summer months
+
+provide discounts for longer rides if you are a member
